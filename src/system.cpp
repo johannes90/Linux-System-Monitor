@@ -7,6 +7,7 @@
 #include "process.h"
 #include "processor.h"
 #include "system.h"
+#include "linux_parser.h"
 
 using std::set;
 using std::size_t;
@@ -16,26 +17,75 @@ using std::vector;
 
 You need to properly format the uptime. Refer to the comments mentioned in format. cpp for formatting the uptime.*/
 
-// TODO: Return the system's CPU
-Processor& System::Cpu() { return cpu_; }
+// the System class has a lot of ACCESSOR functions 
+// Because we have the linux parser class which parses the data needed inside the systems class basically all
+// we do here is call the corresponding functions from the parser
+
+// TODO:  -> Return the system's CPU 
+Processor& System::Cpu() 
+{ 
+    return cpu_; 
+}
 
 // TODO: Return a container composed of the system's processes
-vector<Process>& System::Processes() { return processes_; }
+vector<Process>& System::Processes() 
+{ 
+    // use the parser to get the process IDs 
+    vector<int> processIDs = LinuxParser::Pids();
+
+    //std::vector<Process> processes_ is a private member of system class
+    // loop through all process IDS and initialize Process objects for every ID 
+    for(auto process : processIDs) {
+
+    processes_.push_back(Process(process));
+    }
+    std::sort(processes_.begin(), processes_.end());
+    return processes_;  
+}
+
 
 // TODO: Return the system's kernel identifier (string)
-std::string System::Kernel() { return string(); }
+std::string System::Kernel() 
+{
+    // information about kernel exists in proc/kernel 
+    return LinuxParser::Kernel();
+}
 
 // TODO: Return the system's memory utilization
-float System::MemoryUtilization() { return 0.0; }
+float System::MemoryUtilization() 
+{  
+    // proc/meminfo
+    // check stackoverflow answer about how htop calculates memory utilization from the data in /proc/meminfo
+    // Total used memory = MemTotal - MemFree
+    return LinuxParser::MemoryUtilization();
+}
 
 // TODO: Return the operating system name
-std::string System::OperatingSystem() { return string(); }
+std::string System::OperatingSystem() 
+{ 
+    return LinuxParser::OperatingSystem();
+    // Information about the operating system exists outside of the /proc directory, in the /etc/os-release
+}
 
 // TODO: Return the number of processes actively running on the system
-int System::RunningProcesses() { return 0; }
+int System::RunningProcesses() 
+{ 
+    // proc/stat
+    return LinuxParser::RunningProcesses(); 
+}
+
+
 
 // TODO: Return the total number of processes on the system
-int System::TotalProcesses() { return 0; }
+int System::TotalProcesses() 
+{ 
+    // Information about the total number of processes on the system exists in the  proc/stat
+    return LinuxParser::TotalProcesses(); 
+}
 
 // TODO: Return the number of seconds since the system started running
-long int System::UpTime() { return 0; }
+long int System::UpTime() 
+{ 
+    // proc/uptime
+    return LinuxParser::UpTime();
+}
