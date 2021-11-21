@@ -68,11 +68,58 @@ vector<int> LinuxParser::Pids() {
   return pids;
 }
 
-// TODO: Read and return the system memory utilization
-float LinuxParser::MemoryUtilization() { return 0.0; }
+// Read and return the system memory utilization
+float LinuxParser::MemoryUtilization() 
+{ 
+  //extract info from /proc/meminfo as with Kernel, Operating system before.
+  // Total used memory = MemTotal - Memfree see 
 
-// TODO: Read and return the system uptime
-long LinuxParser::UpTime() { return 0; }
+  std::string line, key; //to scan the meminfo file
+  float memTotal, memFree, val;    // store the values we are interested in
+
+  std::ifstream filestream(kProcDirectory + kMeminfoFilename);
+
+  if (filestream.is_open())
+  {
+    while (std::getline(filestream, line))
+    {
+      std::replace(line.begin(), line.end(), ':', ' ');
+      std::istringstream linestream(line);
+      // search for MemTotal and MemFree
+        while (linestream >> key >> val)
+        {
+          if (key == "MemTotal")
+          {
+            memTotal = val;
+          }
+          if (key == "MemFree")
+          {
+            memFree = val;
+            break;
+          }
+        }
+    }
+  }
+  return (memTotal - memFree)/memTotal; // used memory in percentage
+}
+
+// Read and return the system uptime
+long LinuxParser::UpTime() 
+{ 
+  long uptime;
+  //long idletime, test;
+  std::string line; //to scan the uptime file
+
+  std::ifstream filestream(kProcDirectory + kUptimeFilename);
+
+  if (filestream.is_open())
+  {
+    std::getline(filestream, line);
+    std::istringstream linestream(line);
+    linestream >> uptime;
+  }
+  return uptime; 
+}
 
 // TODO: Read and return the number of jiffies for the system
 long LinuxParser::Jiffies() { return 0; }
@@ -82,19 +129,107 @@ long LinuxParser::Jiffies() { return 0; }
 long LinuxParser::ActiveJiffies(int pid[[maybe_unused]]) { return 0; }
 
 // TODO: Read and return the number of active jiffies for the system
-long LinuxParser::ActiveJiffies() { return 0; }
+long LinuxParser::ActiveJiffies() 
+{ 
+  return Jiffies() - IdleJiffies(); 
+}
 
 // TODO: Read and return the number of idle jiffies for the system
 long LinuxParser::IdleJiffies() { return 0; }
 
-// TODO: Read and return CPU utilization
-vector<string> LinuxParser::CpuUtilization() { return {}; }
+// Read and return CPU utilization numbers in a vector
+vector<string> LinuxParser::CpuUtilization() 
+{ 
+  string line;
+  vector<string> cpuUtilizations;
+  string value;
 
+  std::ifstream filestream(kProcDirectory + kStatFilename);
+
+  if (filestream.is_open()) {
+    while (std::getline(filestream, line)) 
+    {
+    
+      std::istringstream linestream(line);
+      
+      // go through line an put all integers in vector with
+      // QUESTION more elegant way to extract numbers ?
+      linestream >> value;
+      if (value == "cpu")
+      {
+        while(linestream >> value)
+        {
+          std::cout << value << std::endl;
+          try{
+            std::cout << stoi(value);
+            cpuUtilizations.push_back(value);
+          }
+          catch(...){}// we just care for all numbers after "cpu"}
+          
+        }
+      }
+    }
+  }
+
+
+  return cpuUtilizations; 
+}
 // TODO: Read and return the total number of processes
-int LinuxParser::TotalProcesses() { return 0; }
+int LinuxParser::TotalProcesses() 
+{ 
+  // we can use basic structure from OS function
+  // 1: Open file proc/stat
+  // 2: Extract number after "processes"
+  string line;
+  string key;
+  int value;
+  std::ifstream filestream(kProcDirectory + kStatFilename);
+
+  if (filestream.is_open()) {
+    while (std::getline(filestream, line)) 
+    {
+    
+      std::istringstream linestream(line);
+
+      while (linestream >> key >> value) 
+      {
+        if (key == "processes") 
+        {
+          return value;
+        }
+      }
+    }
+  }
+  return 0.0;
+}
 
 // TODO: Read and return the number of running processes
-int LinuxParser::RunningProcesses() { return 0; }
+int LinuxParser::RunningProcesses() 
+{ 
+  // we can use basic structure from OS function
+  // 1: Open file proc/stat
+  // 2: Extract number after "procs_running"
+  string line;
+  string key;
+  int value;
+  std::ifstream filestream(kProcDirectory + kStatFilename);
+
+  if (filestream.is_open()) {
+    while (std::getline(filestream, line)) 
+    {
+      std::istringstream linestream(line);
+
+      while (linestream >> key >> value) 
+      {
+        if (key == "procs_running") 
+        {
+          return value;
+        }
+      }
+    }
+  }
+  return 0.0;
+}
 
 // TODO: Read and return the command associated with a process
 // REMOVE: [[maybe_unused]] once you define the function
