@@ -6,7 +6,12 @@
 #include <iostream>
 #include <cmath>
 
-#include "linux_parser.h"
+#include "linux_parser.h" 
+// QUESTION: --------------------------------------------------------------------------------------------------------------------------------------------
+//that header is marked as "fatal error: linux_parser.h: No such file or directory"
+// the monitor exe runs anyway and everything works, I can also debug the code on my machine with VSCode
+// Why is there an error and how can i get rid of it? 
+// QUESTION: --------------------------------------------------------------------------------------------------------------------------------------------
 
 using std::stof;
 using std::string;
@@ -87,18 +92,18 @@ float LinuxParser::MemoryUtilization()
       std::replace(line.begin(), line.end(), ':', ' ');
       std::istringstream linestream(line);
       // search for MemTotal and MemFree
-        while (linestream >> key >> val)
+      while (linestream >> key >> val)
+      {
+        if (key == "MemTotal")
         {
-          if (key == "MemTotal")
-          {
-            memTotal = val;
-          }
-          if (key == "MemFree")
-          {
-            memFree = val;
-            break;
-          }
+          memTotal = val;
         }
+        if (key == "MemFree")
+        {
+          memFree = val;
+          break;
+        }
+      }
     }
   }
   return (memTotal - memFree)/memTotal; // used memory in percentage
@@ -108,9 +113,7 @@ float LinuxParser::MemoryUtilization()
 long LinuxParser::UpTime() 
 { 
   long uptime;
-  //long idletime, test;
-  std::string line; //to scan the uptime file
-
+  std::string line; 
   std::ifstream filestream(kProcDirectory + kUptimeFilename);
 
   if (filestream.is_open())
@@ -131,14 +134,12 @@ long LinuxParser::Jiffies()
   for (int i = kUser_; i <= kSteal_; i++) {
     jiffies = jiffies + std::stol(cpuUtilization[i]);
   }
-
   return jiffies;
 }
 
-// TODO: Read and return the number of active jiffies for a PID
+// Read and return the number of active jiffies for a PID
 // REMOVE: [[maybe_unused]] once you define the function
-long LinuxParser::ActiveJiffies(int pid[[maybe_unused]]) { return 0; }
-
+long LinuxParser::ActiveJiffies(int pid[[maybe_unused]]) { return 0; } // i don't need that helper function
 
 // Read and return the number of idle jiffies for the system
 long LinuxParser::IdleJiffies() 
@@ -159,25 +160,22 @@ long LinuxParser::ActiveJiffies()
   return Jiffies() - IdleJiffies(); 
 }
 
-
-
 // Read and return CPU utilization numbers in a vector
 vector<string> LinuxParser::CpuUtilization() 
 { 
   string line;
   vector<string> cpuUtilizations;
   string value;
-
   std::ifstream filestream(kProcDirectory + kStatFilename);
 
   if (filestream.is_open()) {
     while (std::getline(filestream, line)) 
     {
-    
       std::istringstream linestream(line);
-      
       // go through line an put all integers in vector with
+      // QUESTION: --------------------------------------------------------------------------------------------------------------------------------------------
       // QUESTION more elegant way to extract numbers ?
+      // QUESTION: --------------------------------------------------------------------------------------------------------------------------------------------
       linestream >> value;
       if (value == "cpu")
       {
@@ -258,10 +256,10 @@ int LinuxParser::RunningProcesses()
 // Read and return the command associated with a process
 string LinuxParser::Command(int pid) 
 { 
-
   string command, line;
   std::ifstream stream(kProcDirectory + std::to_string(pid) + kCmdlineFilename);
-  if (stream.is_open()) {
+  if (stream.is_open()) 
+  {
 
     std::getline(stream, line);
     std::istringstream linestream(line);
@@ -285,8 +283,10 @@ string LinuxParser::Ram(int pid)
       if (key == "VmSize:")
       {
         linestream >> value;
-        ram = std::to_string(  round(stof(value)/100)/10 ); // convert from kb  
-        //QUESTION: how do i round to x decimal places and also only display theese (output is xxxx.0000000)in c++ ? 
+        ram = std::to_string(  round(stof(value)/100)/10 ); // convert from kb to mb
+        // QUESTION: -------------------------------------------------------------------------------------------------------------------------------------------- 
+        //how do i round to x decimal places and also only display theese (output is xxxx.0000000)in c++ ? 
+        // QUESTION: --------------------------------------------------------------------------------------------------------------------------------------------
         break;
       } 
     }
@@ -301,13 +301,10 @@ string LinuxParser::Uid(int pid)
   std::ifstream filestream(kProcDirectory + std::to_string(pid) + kStatusFilename);
   if (filestream.is_open()) 
   {
-
     while (std::getline(filestream, line)) 
     {
       std::istringstream  linestream(line);
-      //std::cout << line << std::endl;
       linestream >> key >> uid;
-      
       if(key == "Uid:")
       {
       return uid;
@@ -315,7 +312,6 @@ string LinuxParser::Uid(int pid)
       
     } 
   }
-  
   return string(); 
 }
 
@@ -325,7 +321,6 @@ string LinuxParser::User(int pid)
 { 
   string line, user, password, uid;
   std::ifstream filestream(kPasswordPath);
-
   if (filestream.is_open()) 
   {
     while (std::getline(filestream, line))
@@ -341,8 +336,6 @@ string LinuxParser::User(int pid)
       }
     }
   }
-
-
   return string();
 }
 
@@ -350,7 +343,7 @@ string LinuxParser::User(int pid)
 long LinuxParser::UpTime(int pid)
 { 
   long uptime;
-  //float clocktime = sysconf(_SC_CLK_TCK);
+  float clocktime = sysconf(_SC_CLK_TCK); // frequence of clock ticks [1/s]
 
   string line, value;
   vector<string> states;
@@ -360,7 +353,9 @@ long LinuxParser::UpTime(int pid)
     std::getline(filestream, line);
     std::istringstream linestream(line);
     // extract the 22th value (=uptime) 
+    // QUESTION: --------------------------------------------------------------------------------------------------------------------------------------------
     // QUESTION: What is a more elegant way of discarding the first N values of a stream???
+    // QUESTION: --------------------------------------------------------------------------------------------------------------------------------------------
     for (int i = 0; i < 21; i++)
     {
       linestream >> value;
@@ -368,11 +363,11 @@ long LinuxParser::UpTime(int pid)
     // that is the 22th. value of the line = uptime 
     linestream >> value;
 
-    // convert from clockticks to seconds
-    uptime = stol(value) / sysconf(_SC_CLK_TCK);
+    // convert number of ticks to seconds
+    uptime = stol(value) / clocktime;
   }
 
-  return uptime; //conversion from seconds to hh::mm::ss is done in the display class
+  return uptime; //conversion from seconds to hh::mm::ss is done in the NcursesDisplay class with format function
 }
 
 // compute CPU utilization, see also process.cpp
@@ -380,13 +375,12 @@ long LinuxParser::UpTime(int pid)
 // https://stackoverflow.com/questions/16726779/how-do-i-get-the-total-cpu-usage-of-an-application-from-proc-pid-stat/16736599#16736599
 float LinuxParser::CpuUtilization(int processID) 
 { 
-
   string line, statvalue;
   vector<string> statvalues;
   std::ifstream filestream(kProcDirectory + to_string(processID) + kStatFilename);
 
   long upTimeSystem = LinuxParser::UpTime();
-  long uTime, sTime, cuTime, csTime, startTime, totalTime;
+  long uTime, sTime, cuTime, csTime, startTime, totalTime;  // values from /proc/[pid]/stat:
   float cpuUsage, seconds;
  
   if (filestream.is_open()) 
@@ -396,9 +390,8 @@ float LinuxParser::CpuUtilization(int processID)
     for( int i = 0; i < 22; i++)
     {
       linestream >> statvalue;
-      statvalues.push_back(statvalue); // statvalues
+      statvalues.push_back(statvalue); 
     }
-
     uTime      = stol(statvalues[13]);
     sTime      = stol(statvalues[14]);
     startTime  = stol(statvalues[21]);
@@ -408,6 +401,7 @@ float LinuxParser::CpuUtilization(int processID)
     totalTime  = uTime + sTime + cuTime + csTime; 
     seconds  =(float) (upTimeSystem - (startTime / Hertz) ); //(startTime / Hertz = uptime(pid) ?! )
 
+    // compute acutal cpu usage 
     if (seconds != 0){
       cpuUsage = (float) 100 * ( (totalTime / Hertz) / seconds);  
     }
@@ -416,5 +410,6 @@ float LinuxParser::CpuUtilization(int processID)
       cpuUsage = 0.f;
     }
   }
+
   return cpuUsage;
 }
