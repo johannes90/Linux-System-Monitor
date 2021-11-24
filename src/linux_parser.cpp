@@ -306,18 +306,17 @@ string LinuxParser::Uid(int pid)
     {
       std::istringstream  linestream(line);
       //std::cout << line << std::endl;
-      while(linestream >> key)
+      linestream >> key >> uid;
+      
+      if(key == "Uid:")
       {
-        if(key == "Uid:")
-        {
-        linestream >> uid;
-        break;
-        }
+      return uid;
       }
+      
     } 
   }
   
-  return uid; 
+  return string(); 
 }
 
 //  Read and return the user associated with a process
@@ -337,14 +336,14 @@ string LinuxParser::User(int pid)
       {
         if (uid == LinuxParser::Uid(pid))
         {
-          break;
+          return user;
         }
       }
     }
   }
 
 
-  return user;
+  return string();
 }
 
 // Read and return the uptime of a process
@@ -376,43 +375,46 @@ long LinuxParser::UpTime(int pid)
   return uptime; //conversion from seconds to hh::mm::ss is done in the display class
 }
 
-// TODO: compute CPU utilization, see also process.cpp
+// compute CPU utilization, see also process.cpp
+// calculation the cpu utilization using the computation in the following post
+// https://stackoverflow.com/questions/16726779/how-do-i-get-the-total-cpu-usage-of-an-application-from-proc-pid-stat/16736599#16736599
 float LinuxParser::CpuUtilization(int processID) 
 { 
-  
-  // calculation the cpu utilization following the computation on stackoverflow
-  // https://stackoverflow.com/questions/16726779/how-do-i-get-the-total-cpu-usage-of-an-application-from-proc-pid-stat/16736599#16736599
-  long uptimeSystem = LinuxParser::UpTime();
-  long startTime, totalTime, sTime, uTime;
-  string line, statvalue; 
-  std::vector<string> statvalues;
-  float seconds, cpuUtilization;
+
+  string line, statvalue;
+  vector<string> statvalues;
   std::ifstream filestream(kProcDirectory + to_string(processID) + kStatFilename);
+
+  long upTimeSystem = LinuxParser::UpTime();
+  long uTime, sTime, cuTime, csTime, startTime, totalTime;
+  float cpuUsage, seconds;
+ 
   if (filestream.is_open()) 
   {
     std::getline(filestream, line);
     std::istringstream linestream(line);
-    // extract statvalues we need for computation
-    for( int i = 0; i <22; i++)
+    for( int i = 0; i < 22; i++)
     {
       linestream >> statvalue;
-      statvalues.push_back(statvalue);
+      statvalues.push_back(statvalue); // statvalues
+    }
+
+    uTime      = stol(statvalues[13]);
+    sTime      = stol(statvalues[14]);
+    startTime  = stol(statvalues[21]);
+    cuTime     = stol(statvalues[15]);
+    csTime     = stol(statvalues[16]);
+    float Hertz = (float)sysconf(_SC_CLK_TCK);
+    totalTime  = uTime + sTime + cuTime + csTime; 
+    seconds  =(float) (upTimeSystem - (startTime / Hertz) ); //(startTime / Hertz = uptime(pid) ?! )
+
+    if (seconds != 0){
+      cpuUsage = (float) 100 * ( (totalTime / Hertz) / seconds);  
+    }
+    else
+    {
+      cpuUsage = 0.f;
     }
   }
-  uTime      = stol(statvalues[13]);
-  sTime      = stol(statvalues[14]);
-  startTime  = stol(statvalues[21]);
-  //float Hertz = (float)sysconf(_SC_CLK_TCK);
-  totalTime  = uTime + sTime;//+ stol(statvalues[15]) + stol(statvalues[16]); 
-
-  seconds  =(float) (uptimeSystem - (startTime / sysconf(_SC_CLK_TCK)) ); //i think side the right time is the uptime[pid]
-
-  if (seconds != 0){
-    cpuUtilization = (float) (100 * ( (totalTime / sysconf(_SC_CLK_TCK)) / seconds));  // *100
-  }
-  else{
-    cpuUtilization = 0.f;
-  }
-  return cpuUtilization; 
-
+  return cpuUsage;
 }
