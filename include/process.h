@@ -11,15 +11,15 @@ class Process {
     // class constructor 
     Process(int processID);
 
-  int Pid();                               // TODO: See src/process.cpp
-  std::string User();                      // TODO: See src/process.cpp
-  std::string Command();                   // TODO: See src/process.cpp
-  float CpuUtilization();                  // TODO: See src/process.cpp
-  std::string Ram();                       // TODO: See src/process.cpp
-  long int UpTime();                       // TODO: See src/process.cpp
-  bool operator<(Process const& a) const;  // TODO: See src/process.cpp
+  int Pid() const;                               // is const because of the operator overloading function
+  std::string User();                     
+  std::string Command();                  
+  float CpuUtilization() const;                  // is const because of the operator overloading function      
+  std::string Ram();                       
+  long int UpTime();                       
+  bool operator<(Process const& a) const;    
 
-  // TODO: Declare any necessary private members
+  // Declare any necessary private members
  private:
     // the ID itself
     int processID_; 

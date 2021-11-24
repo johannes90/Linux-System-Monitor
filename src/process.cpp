@@ -18,23 +18,21 @@ Process::Process(int processID)
 }
 
 /* Getter Functions */
-// TODO: Return this process's ID
-int Process::Pid() 
+// Return this process's ID
+int Process::Pid() const
 { 
     return processID_; 
 }
 
-// TODO: Return this process's CPU utilization
-float Process::CpuUtilization() 
+//Return this process's CPU utilization
+float Process::CpuUtilization() const
 { 
     // Linux stores the CPU utilization of a process in the /proc/[PID]/stat file.
     // The "/proc/[pid]/stat" section of the proc man page describes the meaning of the values in this file. 
     // look up "13.Process Data"
-    //TODO: handle that inside of parser
-    //return 0;
     return LinuxParser::CpuUtilization(Pid());
 }
-// TODO: Return the command that generated this process
+// Return the command that generated this process
 string Process::Command() 
 { 
     // Linux stores the command used to launch the function in the /proc/[pid]/cmdline file.
@@ -42,7 +40,7 @@ string Process::Command()
     return LinuxParser::Command(Pid());
 }
 
-// TODO: Return this process's memory utilization
+// Return this process's memory utilization
 string Process::Ram() 
 { 
     // Linux stores memory utilization for the process in /proc/[pid]/status.
@@ -51,9 +49,7 @@ string Process::Ram()
     return LinuxParser::Ram(Pid());
 }
 
-
-
-// TODO: Return the user (name) that generated this process
+// Return the user (name) that generated this process
 string Process::User() 
 { 
     // proc/[PID]/status -> First Integer of UID line 
@@ -62,8 +58,7 @@ string Process::User()
     return LinuxParser::User(Pid());
 }
 
-
-// TODO: Return the age of this process (in seconds)
+// Return the age of this process (in seconds)
 long int Process::UpTime() 
 { 
     // Linux stores the process up time in /proc/[pid]/stat.
@@ -79,8 +74,14 @@ long int Process::UpTime()
 }
 
 
-
-
-// TODO: Overload the "less than" comparison operator for Process objects
+// Overload the "less than" comparison operator for Process objects
 // REMOVE: [[maybe_unused]] once you define the function
-bool Process::operator<(Process const& a[[maybe_unused]]) const { return true; }
+bool Process::operator<(Process const& a)  const{ 
+
+    // I sort the processes according to their CPU utilization 
+    // -> those functions that could potentially modify "a" have to be made const because "a" is const
+    bool result  =  (a.CpuUtilization() < a.CpuUtilization()); 
+
+    return result;
+    
+}

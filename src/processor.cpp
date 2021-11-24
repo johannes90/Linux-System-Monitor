@@ -5,38 +5,28 @@
 
 
 
-
-// TODO: Return the aggregate CPU utilization
+// Return the aggregate CPU utilization
+// calculate aggregate utilization exactly as described here: 
+// https://stackoverflow.com/questions/23367857/accurate-calculation-of-cpu-usage-given-in-percentage-in-linux
 float Processor::Utilization() 
 { 
     // computing the aggregate utilization:
     std::vector<std::string> cpuUtilization = LinuxParser::CpuUtilization();
 
-    // calculate aggregate utilization as described here: 
-    //https://stackoverflow.com/questions/23367857/accurate-calculation-of-cpu-usage-given-in-percentage-in-linux
-    int user = stoi(cpuUtilization[0]);
-    int nice = stoi(cpuUtilization[1]);
-    int system = stoi(cpuUtilization[2]);
-    int idle = stoi(cpuUtilization[3]);
-    int iowait = stoi(cpuUtilization[4]);
-    int irq = stoi(cpuUtilization[5]);
-    int softirq = stoi(cpuUtilization[6]);
-    int steal = stoi(cpuUtilization[7]);
-    int guest = stoi(cpuUtilization[8]);
-    int guest_nice = stoi(cpuUtilization[9]);
+    float total   = (float)LinuxParser::Jiffies();
+    float idle    = (float)LinuxParser::IdleJiffies();  
 
-    //TODO: what are the prev values ?
-    //prevIdle  = previdle +previowait
-    idle        = idle + iowait;
-
-    // int prevNonIdle = prevuser + prevnice + prevsystem + previrq + prevsoftirq + prevsteal;
-    int nonIdle = user + nice + system + irq + softirq + steal;
-
-    // int prevTotal = prevIdle + prevNonIdle;
-    int total = idle + nonIdle;
+    //differentiate: actual values minus the previous one
+    float totald = total - prevTotal;
+    float idled = idle - prevIdle;
     
-    return 0.0;
+    float CPU_Percentage = (totald - idled)/totald;
 
+    //update prev values
+    prevTotal = total; 
+    prevIdle  = idle;
+
+    return CPU_Percentage;
 }
 
 //proc/stat

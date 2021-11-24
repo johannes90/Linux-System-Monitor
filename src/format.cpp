@@ -39,6 +39,3 @@ string Format::ElapsedTime(long seconds)
     return output;
 
 }
-
-
-//test
