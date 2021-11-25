@@ -27,9 +27,6 @@ int Process::Pid() const
 //Return this process's CPU utilization
 float Process::CpuUtilization() const
 { 
-    // Linux stores the CPU utilization of a process in the /proc/[PID]/stat file.
-    // The "/proc/[pid]/stat" section of the proc man page describes the meaning of the values in this file. 
-    // look up "13.Process Data"
     return LinuxParser::CpuUtilization(Pid());
 }
 // Return the command that generated this process
@@ -58,17 +55,16 @@ string Process::User()
 // Return the age of this process (in seconds)
 long int Process::UpTime() 
 { 
-    return LinuxParser::UpTime(Pid()); 
+    // we need to substract from systems uptime here because
+    // because the process uptime is the time after the system boot
+    return LinuxParser::UpTime() - LinuxParser::UpTime(Pid());   
 }
 
 
 // Overload the "less than" comparison operator for Process objects
 bool Process::operator<(Process const& a)  const{ 
 
-    // I sort the processes according to their CPU utilization 
+    // sort the processes according to their CPU utilization 
     // -> those functions that could potentially modify "a" have to be made const because "a" is const
-    bool result  =  (a.CpuUtilization() < a.CpuUtilization()); 
-
-    return result;
-    
+    return  (a.CpuUtilization() < a.CpuUtilization());     
 }

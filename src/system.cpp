@@ -3,16 +3,14 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <iostream>
 
 #include "process.h"
 #include "processor.h"
 #include "system.h"
 #include "linux_parser.h"
 
-using std::set;
-using std::size_t;
-using std::string;
-using std::vector;
 /*You need to complete the mentioned TODOs in order to satisfy the rubric criteria "The student will be able to extract and display basic data about the system."
 
 You need to properly format the uptime. Refer to the comments mentioned in format. cpp for formatting the uptime.*/
@@ -28,16 +26,17 @@ Processor& System::Cpu()
 }
 
 // Return a container composed of the system's processes
-vector<Process>& System::Processes() 
+std::vector<Process>& System::Processes() 
 { 
     // use the parser to get the process IDs 
-    vector<int> processIDs = LinuxParser::Pids();
+    std::vector<int> processIDs = LinuxParser::Pids();
 
     //std::vector<Process> processes_ is a private member of system class
     // loop through all process IDS and initialize Process objects for every ID 
     for(auto process : processIDs) {
 
-    processes_.push_back(Process(process));
+    processes_.push_back(process); // is the same as processes_.push_back(Process(process)); because the constructor is called
+
     }
     std::sort(processes_.begin(), processes_.end());
     return processes_;  
@@ -73,7 +72,6 @@ int System::RunningProcesses()
     // proc/stat
     return LinuxParser::RunningProcesses(); 
 }
-
 
 
 // Return the total number of processes on the system

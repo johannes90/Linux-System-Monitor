@@ -5,13 +5,9 @@
 #include <vector>
 #include <iostream>
 #include <cmath>
+#include <iomanip> // for std::setprecision
 
 #include "linux_parser.h" 
-// QUESTION: --------------------------------------------------------------------------------------------------------------------------------------------
-//that header is marked as "fatal error: linux_parser.h: No such file or directory"
-// the monitor exe runs anyway and everything works, I can also debug the code on my machine with VSCode
-// Why is there an error and how can i get rid of it? 
-// QUESTION: --------------------------------------------------------------------------------------------------------------------------------------------
 
 using std::stof;
 using std::string;
@@ -31,7 +27,9 @@ string LinuxParser::OperatingSystem() {
       std::replace(line.begin(), line.end(), '"', ' ');
       std::istringstream linestream(line);
       while (linestream >> key >> value) {
-        if (key == "PRETTY_NAME") {
+        if (key == filterPrettyName) {
+          /*PRETTY_NAME means an operating system name in a format suitable for presentation to the user. [...]  
+           source: http://manpages.ubuntu.com/manpages/xenial/man5/os-release.5.html */
           std::replace(value.begin(), value.end(), '_', ' ');
           return value;
         }
@@ -74,6 +72,13 @@ vector<int> LinuxParser::Pids() {
   return pids;
 }
 
+//TODO: New Question after review: ---------------------------------------------------
+// I don't quite understand the 3. suggestion to close my filestreams (ifstream object) ?
+// I think the filestreams are automatically closed after end of scope 
+// source:  https://stackoverflow.com/questions/748014/do-i-need-to-manually-close-an-ifstream
+// Or do you mean something else? I am happy to learn something new :) 
+
+
 // Read and return the system memory utilization
 float LinuxParser::MemoryUtilization() 
 { 
@@ -81,7 +86,9 @@ float LinuxParser::MemoryUtilization()
   // Total used memory = MemTotal - Memfree see 
 
   std::string line, key; //to scan the meminfo file
-  float memTotal, memFree, val;    // store the values we are interested in
+  float memTotal;
+  float memFree;
+  float val;    // store the values we are interested in
 
   std::ifstream filestream(kProcDirectory + kMeminfoFilename);
 
@@ -94,11 +101,11 @@ float LinuxParser::MemoryUtilization()
       // search for MemTotal and MemFree
       while (linestream >> key >> val)
       {
-        if (key == "MemTotal")
+        if (key == filterMemTotalString)
         {
           memTotal = val;
         }
-        if (key == "MemFree")
+        if (key == filterMemFreeString)
         {
           memFree = val;
           break;
@@ -173,11 +180,9 @@ vector<string> LinuxParser::CpuUtilization()
     {
       std::istringstream linestream(line);
       // go through line an put all integers in vector with
-      // QUESTION: --------------------------------------------------------------------------------------------------------------------------------------------
-      // QUESTION more elegant way to extract numbers ?
-      // QUESTION: --------------------------------------------------------------------------------------------------------------------------------------------
+
       linestream >> value;
-      if (value == "cpu")
+      if (value == filterCpu)
       {
         while(linestream >> value)
         {
@@ -215,7 +220,7 @@ int LinuxParser::TotalProcesses()
 
       while (linestream >> key >> value) 
       {
-        if (key == "processes") 
+        if (key == filterProcesses) 
         {
           return value;
         }
@@ -243,7 +248,7 @@ int LinuxParser::RunningProcesses()
 
       while (linestream >> key >> value) 
       {
-        if (key == "procs_running") 
+        if (key == filterRunningProcesses) 
         {
           return value;
         }
@@ -272,7 +277,10 @@ string LinuxParser::Command(int pid)
 //Read and return the memory used by a process
 string LinuxParser::Ram(int pid)
 { 
-  string ram, line, key, value;
+  string ram;
+  string line;
+  string key;
+  string value;
   std::ifstream filestream(kProcDirectory + std::to_string(pid) + kStatusFilename);
   if (filestream.is_open()) {
 
@@ -280,24 +288,28 @@ string LinuxParser::Ram(int pid)
     {
       std::istringstream  linestream(line);
       linestream >> key;
-      if (key == "VmSize:")
+      if (key == filterProcMem) // I used VmRSS instead of VmSize (which is virtual memory size and therefore potentially more than the physical RAM size)
+      // source: https://man7.org/linux/man-pages/man5/proc.5.html
       {
         linestream >> value;
-        ram = std::to_string(  round(stof(value)/100)/10 ); // convert from kb to mb
-        // QUESTION: -------------------------------------------------------------------------------------------------------------------------------------------- 
-        //how do i round to x decimal places and also only display theese (output is xxxx.0000000)in c++ ? 
-        // QUESTION: --------------------------------------------------------------------------------------------------------------------------------------------
-        break;
+        float mem = stof(value) / 1000.;
+        // use a stream and setprecision to change the displayed precision of the value
+        std::stringstream s;
+        s << std::fixed << std::setprecision(2) << mem; 
+        return s.str();
+        
       } 
     }
   }
-  return ram; 
+  return string();
 }
 
 // Read and return the user ID associated with a process
 string LinuxParser::Uid(int pid)
 { 
-  string line, key, uid;
+  string line; 
+  string key; 
+  string uid;
   std::ifstream filestream(kProcDirectory + std::to_string(pid) + kStatusFilename);
   if (filestream.is_open()) 
   {
@@ -305,7 +317,7 @@ string LinuxParser::Uid(int pid)
     {
       std::istringstream  linestream(line);
       linestream >> key >> uid;
-      if(key == "Uid:")
+      if(key == filterUID)
       {
       return uid;
       }
@@ -342,7 +354,6 @@ string LinuxParser::User(int pid)
 // Read and return the uptime of a process
 long LinuxParser::UpTime(int pid)
 { 
-  long uptime;
   float clocktime = sysconf(_SC_CLK_TCK); // frequence of clock ticks [1/s]
 
   string line, value;
@@ -353,21 +364,28 @@ long LinuxParser::UpTime(int pid)
     std::getline(filestream, line);
     std::istringstream linestream(line);
     // extract the 22th value (=uptime) 
-    // QUESTION: --------------------------------------------------------------------------------------------------------------------------------------------
-    // QUESTION: What is a more elegant way of discarding the first N values of a stream???
-    // QUESTION: --------------------------------------------------------------------------------------------------------------------------------------------
+
+    // review suggestion did not work for me, see comment down below
+    /*std::string value2;
+    while (linestream) {
+
+        //linestream.seekg(21, std::ios_base::beg) >> value; // -> that seems to give me a wrong result or I made a mistake .. 
+        linestream.seekg(22, std::ios_base::beg) >> value2;
+        return stol(value) / clocktime;
+      }
+    */
     for (int i = 0; i < 21; i++)
     {
       linestream >> value;
     }
     // that is the 22th. value of the line = uptime 
     linestream >> value;
-
+    
     // convert number of ticks to seconds
-    uptime = stol(value) / clocktime;
+    return stol(value) / clocktime; //conversion from seconds to hh::mm::ss is done in the NcursesDisplay class with format function
   }
 
-  return uptime; //conversion from seconds to hh::mm::ss is done in the NcursesDisplay class with format function
+  return long(); //uptime; 
 }
 
 // compute CPU utilization, see also process.cpp
@@ -403,7 +421,7 @@ float LinuxParser::CpuUtilization(int processID)
 
     // compute acutal cpu usage 
     if (seconds != 0){
-      cpuUsage = (float) 100 * ( (totalTime / Hertz) / seconds);  
+      cpuUsage = (float) ( (totalTime / Hertz) / seconds);  
     }
     else
     {
