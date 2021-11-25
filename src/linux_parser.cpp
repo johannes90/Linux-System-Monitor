@@ -174,33 +174,28 @@ vector<string> LinuxParser::CpuUtilization()
   vector<string> cpuUtilizations;
   string value;
   std::ifstream filestream(kProcDirectory + kStatFilename);
-
   if (filestream.is_open()) {
     while (std::getline(filestream, line)) 
     {
       std::istringstream linestream(line);
       // go through line an put all integers in vector with
-
       linestream >> value;
       if (value == filterCpu)
       {
         while(linestream >> value)
         {
-          //std::cout << value << std::endl;
           try{
-            int _ = stoi(value); // only to ommit non integer values
             cpuUtilizations.push_back(value);
           }
-          catch(...){}// we just care for all numbers after "cpu"}
-          
+          catch(...){}
         }
+        return cpuUtilizations;
       }
     }
   }
-
-
-  return cpuUtilizations; 
+  return {}; 
 }
+
 // Read and return the total number of processes
 int LinuxParser::TotalProcesses() 
 { 

@@ -72,6 +72,8 @@ void NCursesDisplay::DisplayProcesses(std::vector<Process>& processes,
   for (int i = 0; i < n; ++i) {
     //You need to take care of the fact that the cpu utilization has already been multiplied by 100.
     // Clear the line
+    if(processes[i].Command()!="" && processes[i].Ram()!=""){ // to filter those processes which have empty commands or empty RAM by using these code snippets
+
     mvwprintw(window, ++row, pid_column, (string(window->_maxx-2, ' ').c_str()));
     
     mvwprintw(window, row, pid_column, to_string(processes[i].Pid()).c_str());
@@ -83,6 +85,7 @@ void NCursesDisplay::DisplayProcesses(std::vector<Process>& processes,
               Format::ElapsedTime(processes[i].UpTime()).c_str());
     mvwprintw(window, row, command_column,
               processes[i].Command().substr(0, window->_maxx - 46).c_str());
+    }
   }
 }
 
